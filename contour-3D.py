@@ -61,5 +61,25 @@ def load_mha():
 	                          dictRGB[idx][2])
 	#print("funcColor :", funcColor)
 	print ("Pre 1 : set VTK colores successfully")
+	# ------------ Set Scalar opacity function  -------------
+	'''Now that the color-function has been defined we need to define a scalar opacity function. 
+	This will work in a similar manner with the difference being that we will use it to simply 
+	match each label to an opacity value. '''
+	funcOpacityScalar = vtk.vtkPiecewiseFunction()
+	for idx in dictRGB.keys():
+	    funcOpacityScalar.AddPoint(idx, volOpacityDef if idx<>0 else 0.0)
+	print ("Pre 2 : set VTK Scalar opacity successfully")
+
+
+
+
+
+
+
+
+
+
+
+
 ### End Load_mha()
 load_mha()
