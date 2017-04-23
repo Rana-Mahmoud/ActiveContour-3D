@@ -69,9 +69,23 @@ def load_mha():
 	for idx in dictRGB.keys():
 	    funcOpacityScalar.AddPoint(idx, volOpacityDef if idx<>0 else 0.0)
 	print ("Pre 2 : set VTK Scalar opacity successfully")
-
-
-
+	# ----------- Set Gradient opacity function -------------
+	''' Through such a function we map the scalar spatial gradient, 
+	i.e., the degree at which the scalar changes through space, to an opacity multiplier. 
+	These gradients tend to be small while (traveling) through a homogeneous region,
+	 e.g., within a tissue, while they became larger when crossing between different tissues. 
+	Thus, through such a function we can make the (inside) of tissues rather transparent 
+	while making the boundaries between tissues more prominent, 
+	giving a clearer picture of the entire volume. '''
+	funcOpacityGradient = vtk.vtkPiecewiseFunction()
+	'''pixels with a low gradient of up to 1.0 will have their opacity multiplied by 0.0. 
+	 Pixels with a gradient between 1 and 5 will get a opacity multipler between 0.0 and 0.1, 
+	 pixel values above 5 will get a multiplier on the slope up to 1.0.'''
+	funcOpacityGradient.AddPoint(1,   0.0)
+	funcOpacityGradient.AddPoint(5,   0.1)
+	funcOpacityGradient.AddPoint(100,   1.0)
+	print ("Pre 3 : Set VTK Gradient opacity successfully")
+	# ----------- Set Gradient opacity function -------------
 
 
 
