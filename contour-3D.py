@@ -1,31 +1,25 @@
 # This script implments 3D active contours on brain tumor data 3D volume .mha files
 # import needed packages
 import os
+import cv2
 import vtk
 import math
 import cmath
 import numpy
+from vtk.util import numpy_support
 # ======= Load .mha file ==========
 def load_mha():
-	# Create the renderer, the render window, and the interactor. The
-	# renderer draws into the render window, the interactor enables mouse-
-	# and keyboard-based interaction with the scene.
-	aRenderer = vtk.vtkRenderer()
-	renWin = vtk.vtkRenderWindow()
-	renWin.AddRenderer(aRenderer)
-	iren = vtk.vtkRenderWindowInteractor()
-	iren.SetRenderWindow(renWin)
 	# helper link:
 	# https://pyscience.wordpress.com/2014/11/16/volume-rendering-with-python-and-vtk/
 	#---------------------------------
 	# Path to the .mha file
-	big_tomur   = "VSD.Brain.XX.O.MR_Flair.54512.mha"
-	small_tomur = "VSD.Brain.XX.O.MR_T1c.54514.mha"
+	big_Tumor   = "VSD.Brain.XX.O.MR_Flair.54512.mha"
+	small_Tumor = "VSD.Brain.XX.O.MR_T1c.54514.mha"
 	# load the label-field under the provided .mha file.
 	"""initially create a new vtkMetaImageReader object under reader 
 	set the filename from which to read,"""
 	reader = vtk.vtkMetaImageReader()
-	reader.SetFileName(big_tomur)
+	reader.SetFileName(big_Tumor)
 	reader.Update()
 	# Next we need access to the metadata in order to 
 	# calculate those ConstPixelDims and ConstPixelSpacing variables:
@@ -35,49 +29,84 @@ def load_mha():
 	# Check dimentions of the 3D object
 	# dimentions [240, 240, 155]
 	print("ConstPixelDims: ",ConstPixelDims) 
+	# Load spacing values 
+	# ElementSpacing = 1.0 1.0 1.0
+	# (0.40039101243019104, 0.40039101243019104, 0.4499969482421875)
+	ConstPixelSpacing = ( 1.0 ,1.0 ,1.0 )
+	# Load all the pixel data into an appropriate sized NumPy array named bigTumorArr
+	x = numpy.arange(0.0, (ConstPixelDims[0]+1)*ConstPixelSpacing[0], ConstPixelSpacing[0])
+	y = numpy.arange(0.0, (ConstPixelDims[1]+1)*ConstPixelSpacing[1], ConstPixelSpacing[1])
+	z = numpy.arange(0.0, (ConstPixelDims[2]+1)*ConstPixelSpacing[2], ConstPixelSpacing[2])
+	# Get the 'vtkImageData' object from the reader
+	imageData = reader.GetOutput()
+	print("imageData :",imageData)
+	# Get the 'vtkPointData' object from the 'vtkImageData' object
+	pointData = imageData.GetPointData()
+	print("pointData :",pointData)
+	# Ensure that only one array exists within the 'vtkPointData' object
+	assert (pointData.GetNumberOfArrays()==1)
+	# Get the `vtkArray` (or whatever derived type) which is needed for the `numpy_support.vtk_to_numpy` function
+	arrayData = pointData.GetArray(0)
+	print("arrayData : ",arrayData)
+	# Convert the `vtkArray` to a NumPy array
+	bigTumorArr = numpy_support.vtk_to_numpy(arrayData)
+	# Reshape the NumPy array to 3D using 'ConstPixelDims' as a 'shape'
+	bigTumorArr = bigTumorArr.reshape(ConstPixelDims, order='F')
+	print("Dimensions of Big tumor Array : ", bigTumorArr.shape) 
+	return bigTumorArr , reader
+### End Load_mha()
+def render_brainVolume(reader):
+	# Create the renderer, the render window, and the interactor. The
+	# renderer draws into the render window, the interactor enables mouse-
+	# and keyboard-based interaction with the scene.
+	aRenderer = vtk.vtkRenderer()
+	renWin = vtk.vtkRenderWindow()
+	renWin.AddRenderer(aRenderer)
+	iren = vtk.vtkRenderWindowInteractor()
+	iren.SetRenderWindow(renWin)
 	# An isosurface, or contour value of 500 is known to correspond to the
-	# liver of the patient. Once generated, a vtkPolyDataNormals filter is
+	# brain of the patient. Once generated, a vtkPolyDataNormals filter is
 	# is used to create normals for smooth surface shading during rendering.
 	# The triangle stripper is used to create triangle strips from the
 	# isosurface these render much faster on may systems.
-	liverExtractor = vtk.vtkContourFilter()
-	liverExtractor.SetInputConnection(reader.GetOutputPort())
-	liverExtractor.SetValue(1, 100)
+	brainExtractor = vtk.vtkContourFilter()
+	brainExtractor.SetInputConnection(reader.GetOutputPort())
+	brainExtractor.SetValue(1, 100)
 	# Helper link :
 	# http://www.programcreek.com/python/example/11893/vtk.vtkContourFilter
 	# example 3
 	# set disc
-	deciLiver = vtk.vtkDecimatePro()
-	deciLiver.SetInputConnection(liverExtractor.GetOutputPort())
-	deciLiver.SetTargetReduction(.1)
-	deciLiver.PreserveTopologyOn()
+	decibrain = vtk.vtkDecimatePro()
+	decibrain.SetInputConnection(brainExtractor.GetOutputPort())
+	decibrain.SetTargetReduction(.1)
+	decibrain.PreserveTopologyOn()
 	# Use a filter to smooth the data (will add triangles and smooth)
 	smoother = vtk.vtkSmoothPolyDataFilter()
-	smoother.SetInputConnection(deciLiver.GetOutputPort())
+	smoother.SetInputConnection(decibrain.GetOutputPort())
 	smoother.SetNumberOfIterations(100)
 	smoother.SetFeatureAngle(90.0)
 	smoother.SetRelaxationFactor(.7)
 	# Set Normals
-	liverNormals = vtk.vtkPolyDataNormals()
-	liverNormals.SetInputConnection(smoother.GetOutputPort())
-	liverNormals.SetFeatureAngle(180.0)
+	brainNormals = vtk.vtkPolyDataNormals()
+	brainNormals.SetInputConnection(smoother.GetOutputPort())
+	brainNormals.SetFeatureAngle(180.0)
 	#set stripper
-	liverStripper = vtk.vtkStripper()
-	liverStripper.SetInputConnection(liverNormals.GetOutputPort())
+	brainStripper = vtk.vtkStripper()
+	brainStripper.SetInputConnection(brainNormals.GetOutputPort())
 	# Create a mapper and actor for smoothed dataset
-	liverMapper = vtk.vtkPolyDataMapper()
-	liverMapper.SetInputConnection(liverStripper.GetOutputPort())
-	liverMapper.ScalarVisibilityOff()
+	brainMapper = vtk.vtkPolyDataMapper()
+	brainMapper.SetInputConnection(brainStripper.GetOutputPort())
+	brainMapper.ScalarVisibilityOff()
 	# set actor
-	liver = vtk.vtkActor()
-	liver.SetMapper(liverMapper)
-	liver.GetProperty().SetDiffuseColor(.9, .5, .1)
-	liver.GetProperty().SetSpecular(5)
-	liver.GetProperty().SetSpecularPower(60)
-	liver.GetProperty().SetOpacity(0.1)
+	brain = vtk.vtkActor()
+	brain.SetMapper(brainMapper)
+	brain.GetProperty().SetDiffuseColor(.9, .5, .1)
+	brain.GetProperty().SetSpecular(5)
+	brain.GetProperty().SetSpecularPower(60)
+	brain.GetProperty().SetOpacity(0.1)
 	
 	# An isosurface, or contour value of 1150 is known to correspond to the
-	# liver of the patient. Once generated, a vtkPolyDataNormals filter is
+	# brain of the patient. Once generated, a vtkPolyDataNormals filter is
 	# is used to create normals for smooth surface shading during rendering.
 	# The triangle stripper is used to create triangle strips from the
 	# isosurface these render much faster on may systems.
@@ -129,7 +158,7 @@ def load_mha():
 	# The Dolly() method moves the camera towards the FocalPoint,
 	# thereby enlarging the image.
 	aRenderer.AddActor(outline)
-	aRenderer.AddActor(liver)
+	aRenderer.AddActor(brain)
 	#aRenderer.AddActor(tumor)
 	aRenderer.SetActiveCamera(aCamera)
 	aRenderer.ResetCamera()
@@ -152,12 +181,45 @@ def load_mha():
 	iren.Initialize()
 	renWin.Render()
 	iren.Start()
-
-
-
-
-
-
-
-### End Load_mha()
-load_mha()
+### End render_brainVolume
+def initialize_contour(brainArrData,brainReader):
+### initialize_contour
+def main():
+	# =============== first load mha volum ===============
+	brainArr , brainObj = load_mha()
+	x,y,z = brainArr.shape
+	print("brainArr x :", x )
+	print("brainArr y :", y )
+	print("brainArr z :", z )
+	#=========== Render the volume ===============
+	#--------- NEED fix tumor intensity ---------
+	#render_brainVolume(brainObj)
+	#--------------------------------------
+	temp = brainArr[:,:,75]
+	print("temp image shape :", temp.shape)
+	# Try to see max valye in the arr
+	max_vale = brainArr.max() 
+	print("max value in the arr :", max_vale)
+	# ---------------- try to normalize initinisties ----------------
+	# loop on all pixels to normalize intinisties
+	#normBrainArr = brainArr
+	#for a in xrange(1,x):
+	#	for b in xrange(1,y):
+	#		for c in xrange(1,z):
+	#			normBrainArr[a,b,c] = brainArr[a,b,c]/255
+	## Try to see max value in the arr after normalization
+	#max_vale2 = normBrainArr.max() 
+	#print("max value in the arr after normalization:", max_vale2)
+	#---------------------------------------------------------------
+	# ------------------- Loop to get fram by fram -------------------
+	# Access array 3D fram by fram x-y plan
+	#for i in xrange(1,z):
+	#	curr_fram =  brainArr[:,:,i]
+	# 	#cv2.imshow('fram {0}'.format(i),brainArr[:,:,i])
+	#	#cv2.waitKey()
+	#	break
+	#================= Initialize Contour ======================
+	''' I am gona Initialize contour by ball equation in 3d ,
+	its center is highest pixel value index and r by try and error'''
+	initContour = initialize_contour(brainArr,brainObj)
+main()
