@@ -6,7 +6,11 @@ import vtk
 import math
 import cmath
 import numpy
+import numpy as np
+import matplotlib.pyplot as plt
 from vtk.util import numpy_support
+from mpl_toolkits.mplot3d import Axes3D
+from itertools import product, combinations
 # ======= Load .mha file ==========
 def load_mha():
 	# helper link:
@@ -183,7 +187,45 @@ def render_brainVolume(reader):
 	iren.Start()
 ### End render_brainVolume
 def initialize_contour(brainArrData,brainReader):
+	''' get max value indecies and take pixels away from them with 50, 50 ,10  '''	
+	# Try to see max valye in the arr
+	max_vale = brainArrData.max() 
+	print("max value in the arr :", max_vale)
+	#max_ind = list(brainArrData).index(max_vale).all()
+	peakIndexTuple = numpy.unravel_index(numpy.argmax(brainArrData), brainArrData.shape)
+	print ("max intinisty index : " , peakIndexTuple)
+	print ("Access max intinisty index : " , brainArrData[peakIndexTuple[0],peakIndexTuple[1],peakIndexTuple[2]])
+	# Lets take a window +50 * +50 * +10 to be our initial contour from current intenisty
+	init_contour_indicies = [] # empty array carry contour points
+	init_contour_intinisty = np.empty([50, 50 ,10], dtype=int) # empty array carry contour points
+	for a in range(1,50): ## loop to fill the contour
+		for b in range(1,50):
+			for c in range(1,10):
+				init_contour_intinisty[a,b,c] = brainArrData[peakIndexTuple[0]+a,peakIndexTuple[1]+b,peakIndexTuple[2]+c]
+				init_contour_indicies.append((peakIndexTuple[0]+a,peakIndexTuple[1]+b,peakIndexTuple[2]+c))
+	print("Initial Contour points : ",len(init_contour_indicies))
+	print("Initial Contour intinisty : ",(init_contour_intinisty).shape)
+	return init_contour_indicies , init_contour_intinisty
 ### initialize_contour
+def draw_contour(initCont):
+	# helper link 
+	# http://stackoverflow.com/questions/11140163/python-matplotlib-plotting-a-3d-cube-a-sphere-and-a-vector
+	#--------------------------------------------
+	fig = plt.figure()
+	ax = fig.gca(projection='3d')
+	ax.set_aspect("equal")
+	# draw sphere from array of points
+	# https://docs.scipy.org/doc/numpy-1.10.1/reference/generated/numpy.mgrid.html
+	#u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
+	u, v = np.mgrid[initCont[:,:,:],initCont[:,:,:]]
+	x = np.cos(u)*np.sin(v)
+	y = np.sin(u)*np.sin(v)
+	z = np.cos(v)
+	ax.plot_wireframe(x, y, z, color="r")
+	# draw a Center point
+	ax.scatter([0], [0], [0], color="g", s=100)
+	plt.show()	
+### End draw_contour
 def main():
 	# =============== first load mha volum ===============
 	brainArr , brainObj = load_mha()
@@ -197,9 +239,6 @@ def main():
 	#--------------------------------------
 	temp = brainArr[:,:,75]
 	print("temp image shape :", temp.shape)
-	# Try to see max valye in the arr
-	max_vale = brainArr.max() 
-	print("max value in the arr :", max_vale)
 	# ---------------- try to normalize initinisties ----------------
 	# loop on all pixels to normalize intinisties
 	#normBrainArr = brainArr
@@ -220,6 +259,14 @@ def main():
 	#	break
 	#================= Initialize Contour ======================
 	''' I am gona Initialize contour by ball equation in 3d ,
-	its center is highest pixel value index and r by try and error'''
-	initContour = initialize_contour(brainArr,brainObj)
+	its center is highest pixel value index and get pixels away from them with 50x, 50y ,10z  '''	
+	# Return :
+	#contour points indecies => tuple(x,y,z)
+	#countour points intinisties => np.array[x,y,z]
+	initContour_index , initContour_values = initialize_contour(brainArr,brainObj)
+	# ================ Draw contour ================
+	'''    u, v = np.mgrid[initCont[:,:,:],initCont[:,:,:]]
+	TypeError: list indices must be integers, not tuple 	'''
+	#draw_contour(initContour_index)
+	# =================== UPDATE CONTOUR  ================
 main()
