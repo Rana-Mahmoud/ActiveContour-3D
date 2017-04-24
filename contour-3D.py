@@ -182,6 +182,8 @@ def render_brainVolume(reader):
 	renWin.Render()
 	iren.Start()
 ### End render_brainVolume
+def initialize_contour(brainArrData,brainReader):
+### initialize_contour
 def main():
 	# =============== first load mha volum ===============
 	brainArr , brainObj = load_mha()
@@ -189,21 +191,35 @@ def main():
 	print("brainArr x :", x )
 	print("brainArr y :", y )
 	print("brainArr z :", z )
-	# ???? All Zeros 
-	temp = brainArr[:,:,75]
-	print("temp image shape :", temp.shape)
-	#for g in xrange(1,x):
-	#	for h in xrange(1,y):
-	#		print("pixel {0},{1} =".format(g,h),temp[g,h])
 	#=========== Render the volume ===============
 	#--------- NEED fix tumor intensity ---------
 	#render_brainVolume(brainObj)
 	#--------------------------------------
+	temp = brainArr[:,:,75]
+	print("temp image shape :", temp.shape)
+	# Try to see max valye in the arr
+	max_vale = brainArr.max() 
+	print("max value in the arr :", max_vale)
+	# ---------------- try to normalize initinisties ----------------
+	# loop on all pixels to normalize intinisties
+	#normBrainArr = brainArr
+	#for a in xrange(1,x):
+	#	for b in xrange(1,y):
+	#		for c in xrange(1,z):
+	#			normBrainArr[a,b,c] = brainArr[a,b,c]/255
+	## Try to see max value in the arr after normalization
+	#max_vale2 = normBrainArr.max() 
+	#print("max value in the arr after normalization:", max_vale2)
+	#---------------------------------------------------------------
+	# ------------------- Loop to get fram by fram -------------------
 	# Access array 3D fram by fram x-y plan
-	for i in xrange(1,z):
-		curr_fram =  brainArr[:,:,i]
-	 	#cv2.imshow('fram {0}'.format(i),brainArr[:,:,i])
-		#cv2.waitKey()
-		break
-
+	#for i in xrange(1,z):
+	#	curr_fram =  brainArr[:,:,i]
+	# 	#cv2.imshow('fram {0}'.format(i),brainArr[:,:,i])
+	#	#cv2.waitKey()
+	#	break
+	#================= Initialize Contour ======================
+	''' I am gona Initialize contour by ball equation in 3d ,
+	its center is highest pixel value index and r by try and error'''
+	initContour = initialize_contour(brainArr,brainObj)
 main()
