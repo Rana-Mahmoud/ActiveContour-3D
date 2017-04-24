@@ -1,6 +1,7 @@
 # This script implments 3D active contours on brain tumor data 3D volume .mha files
 # import needed packages
 import os
+import cv2
 import vtk
 import math
 import cmath
@@ -30,6 +31,7 @@ def load_mha():
 	print("ConstPixelDims: ",ConstPixelDims) 
 	# Load spacing values 
 	# ElementSpacing = 1.0 1.0 1.0
+	# (0.40039101243019104, 0.40039101243019104, 0.4499969482421875)
 	ConstPixelSpacing = ( 1.0 ,1.0 ,1.0 )
 	# Load all the pixel data into an appropriate sized NumPy array named bigTumorArr
 	x = numpy.arange(0.0, (ConstPixelDims[0]+1)*ConstPixelSpacing[0], ConstPixelSpacing[0])
@@ -181,10 +183,27 @@ def render_brainVolume(reader):
 	iren.Start()
 ### End render_brainVolume
 def main():
-	# first load mha voluem
+	# =============== first load mha volum ===============
 	brainArr , brainObj = load_mha()
-	# Render the volume
+	x,y,z = brainArr.shape
+	print("brainArr x :", x )
+	print("brainArr y :", y )
+	print("brainArr z :", z )
+	# ???? All Zeros 
+	temp = brainArr[:,:,75]
+	print("temp image shape :", temp.shape)
+	#for g in xrange(1,x):
+	#	for h in xrange(1,y):
+	#		print("pixel {0},{1} =".format(g,h),temp[g,h])
+	#=========== Render the volume ===============
 	#--------- NEED fix tumor intensity ---------
-	render_brainVolume(brainObj)
+	#render_brainVolume(brainObj)
+	#--------------------------------------
+	# Access array 3D fram by fram x-y plan
+	for i in xrange(1,z):
+		curr_fram =  brainArr[:,:,i]
+	 	#cv2.imshow('fram {0}'.format(i),brainArr[:,:,i])
+		#cv2.waitKey()
+		break
 
 main()
